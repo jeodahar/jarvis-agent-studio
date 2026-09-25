@@ -1,4 +1,5 @@
 import os
+import time
 from crewai import LLM, Agent, Crew, Process, Task
 import streamlit as st
 
@@ -7,9 +8,8 @@ st.set_page_config(
 )
 
 st.title("🤖 JARVIS AI Agent Studio")
-st.write("Powered by CrewAI and Groq (openai/gpt-oss-120b)")
+st.write("Optimized for Groq Free Tier Rate Limits")
 
-# Fetch API Key securely from Streamlit Secrets or Environment
 if "GROQ_API_KEY" in st.secrets:
     groq_key = st.secrets["GROQ_API_KEY"]
     os.environ["GROQ_API_KEY"] = groq_key
@@ -17,7 +17,6 @@ else:
     st.error("⚠️ GROQ_API_KEY is missing from Streamlit Secrets Settings!")
     st.stop()
 
-# Topic Input
 topic = st.text_area(
     "Enter Command / Content Topic:",
     placeholder="e.g., 5-minute morning skin barrier routine",
@@ -27,45 +26,44 @@ if st.button("🚀 Execute JARVIS Protocols", type="primary"):
     if not topic:
         st.warning("Please enter a topic.")
     else:
-        with st.spinner("🤖 JARVIS agents are working..."):
+        with st.spinner(
+            "🤖 JARVIS agents are working (applying rate-limit buffers)..."
+        ):
             try:
-                # Switched model string to groq/openai/gpt-oss-120b
+                # Using 8B model prevents token-per-minute errors on free tier
                 groq_llm = LLM(
-                    model="groq/openai/gpt-oss-120b",
+                    model="groq/llama-3.1-8b-instant",
                     temperature=0.7,
-                    max_tokens=2048,
+                    max_tokens=1024,
                 )
 
-                researcher = Agent(
-                    role="JARVIS Research Sub-system",
-                    goal=f"Analyze top hooks and viral concepts for: {topic}",
-                    backstory="An elite intelligence sub-system designed to mine social trends.",
+                # Unified Agent reduces token exchange overhead between agents
+                jarvis_agent = Agent(
+                    role="JARVIS Content Director",
+                    goal=f"Research hooks and write a complete short-form video script for: {topic}",
+                    backstory="An all-in-one AI strategic intelligence unit capable of research and scripting.",
                     llm=groq_llm,
+                    verbose=False,
                 )
 
-                writer = Agent(
-                    role="JARVIS Scripting Sub-system",
-                    goal="Draft a short video script and captions based on research.",
-                    backstory="A tactical copywriter agent skilled in short-form social engagement.",
-                    llm=groq_llm,
+                task = Task(
+                    description=f"""
+                    Analyze top content trends for '{topic}'.
+                    Then directly write:
+                    1. 3 Content Angles / Hooks
+                    2. A concise 30-second script (Visual Cues + Audio)
+                    3. A caption with hashtags.
+                    """,
+                    expected_output="A complete, structured content brief with hooks, script, and caption.",
+                    agent=jarvis_agent,
                 )
 
-                task1 = Task(
-                    description=f"Analyze top trends and content hooks for: {topic}.",
-                    expected_output="3 strong content angles with visual concepts.",
-                    agent=researcher,
-                )
-
-                task2 = Task(
-                    description="Write a complete 30-second script (Visuals + Audio) and caption based on the research.",
-                    expected_output="Visual Cues, Audio Script, Caption, and Hashtags.",
-                    agent=writer,
-                )
-
+                # Set max_rpm to 2 to enforce delays between API calls
                 crew = Crew(
-                    agents=[researcher, writer],
-                    tasks=[task1, task2],
+                    agents=[jarvis_agent],
+                    tasks=[task],
                     process=Process.sequential,
+                    max_rpm=2,
                 )
 
                 result = crew.kickoff()
