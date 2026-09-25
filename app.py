@@ -7,9 +7,9 @@ st.set_page_config(
 )
 
 st.title("🤖 JARVIS AI Agent Studio")
-st.write("Powered by CrewAI and Groq LLaMA 3.3 (70B)")
+st.write("Powered by CrewAI and Groq (openai/gpt-oss-120b)")
 
-# Fetch API Key securely from Streamlit Secrets
+# Fetch API Key securely from Streamlit Secrets or Environment
 if "GROQ_API_KEY" in st.secrets:
     groq_key = st.secrets["GROQ_API_KEY"]
     os.environ["GROQ_API_KEY"] = groq_key
@@ -29,8 +29,9 @@ if st.button("🚀 Execute JARVIS Protocols", type="primary"):
     else:
         with st.spinner("🤖 JARVIS agents are working..."):
             try:
+                # Switched model string to groq/openai/gpt-oss-120b
                 groq_llm = LLM(
-                    model="groq/llama-3.3-70b-versatile",
+                    model="groq/openai/gpt-oss-120b",
                     temperature=0.7,
                     max_tokens=2048,
                 )
