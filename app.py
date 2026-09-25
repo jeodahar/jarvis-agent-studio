@@ -9,30 +9,26 @@ st.set_page_config(
 st.title("🤖 JARVIS AI Agent Studio")
 st.write("Powered by CrewAI and Groq LLaMA 3.3 (70B)")
 
-with st.sidebar:
-    st.header("🔑 Setup")
-    groq_key = st.text_input(
-        "Enter Groq API Key:",
-        type="password",
-        placeholder="gsk_...",
-        help="Get a free key from console.groq.com",
-    )
+# Fetch API Key securely from Streamlit Secrets
+if "GROQ_API_KEY" in st.secrets:
+    groq_key = st.secrets["GROQ_API_KEY"]
+    os.environ["GROQ_API_KEY"] = groq_key
+else:
+    st.error("⚠️ GROQ_API_KEY is missing from Streamlit Secrets Settings!")
+    st.stop()
 
+# Topic Input
 topic = st.text_area(
     "Enter Command / Content Topic:",
     placeholder="e.g., 5-minute morning skin barrier routine",
 )
 
 if st.button("🚀 Execute JARVIS Protocols", type="primary"):
-    if not groq_key:
-        st.error("Please enter your Groq API Key in the sidebar!")
-    elif not topic:
+    if not topic:
         st.warning("Please enter a topic.")
     else:
         with st.spinner("🤖 JARVIS agents are working..."):
             try:
-                os.environ["GROQ_API_KEY"] = groq_key.strip()
-
                 groq_llm = LLM(
                     model="groq/llama-3.3-70b-versatile",
                     temperature=0.7,
