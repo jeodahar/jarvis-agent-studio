@@ -1,50 +1,68 @@
 """
 Builds and runs the CrewAI crew: one agent that can search, scrape, and
-act (send email via Gmail, or post a message via Slack) using Composio.
-Supports multi-turn context: pass prior topics/reports so follow-up
-questions build on earlier research.
+act (send email via Gmail, post to Slack, or create a Notion page) using
+Composio. Supports multi-turn context: pass prior topics/reports so
+follow-up questions build on earlier research.
 """
 
 import os
-from crewai import Agent, Task, Crew
-from langchain_groq import ChatGroq
-from composio_crewai import ComposioToolSet, Action
+from crewai import Agent, Task, Crew, LLM
+from composio import Composio
+from composio_crewai import CrewAIProvider
 
 from tools import TavilySearchTool, FirecrawlScrapeTool
 
+# Each entry maps a friendly label to the Composio toolkit + tool slug
+# that delivers the report. (Composio's newer SDK identifies actions by
+# these string slugs rather than the old Action enum.)
 ACTIONS = {
-    "Email (Gmail)": Action.GMAIL_SEND_EMAIL,
-    "Slack message": Action.SLACK_SEND_MESSAGE,
-    "Notion page": Action.NOTION_CREATE_PAGE,
+    "Email (Gmail)": {"toolkit": "gmail", "tool": "GMAIL_SEND_EMAIL"},
+    "Slack message": {"toolkit": "slack", "tool": "SLACK_SEND_MESSAGE"},
+    "Notion page": {"toolkit": "notion", "tool": "NOTION_CREATE_PAGE"},
 }
 
 
-def build_crew(topic: str, destination: str, action_label: str, history=None):
-    llm = ChatGroq(
-        model="groq/openai/gpt-oss-120b",
-        api_key=os.environ["GROQ_API_KEY"],
-    )
-
-    composio_toolset = ComposioToolSet(api_key=os.environ["COMPOSIO_API_KEY"])
-    action_tool = composio_toolset.get_tools(actions=[ACTIONS[action_label]])
-
-    tools = [TavilySearchTool(), FirecrawlScrapeTool()] + action_tool
-
+def _delivery_instruction(action_label: str, destination: str, topic: str) -> str:
     if action_label == "Email (Gmail)":
-        deliver_instruction = (
+        return (
             f"send the report by email to {destination} using the Gmail "
-            "send action, with a clear subject line"
+            "send email tool, with a clear subject line"
         )
     elif action_label == "Slack message":
-        deliver_instruction = (
+        return (
             f"post the report to the Slack channel {destination} using the "
-            "Slack send message action"
+            "Slack send message tool"
         )
     else:
-        deliver_instruction = (
+        return (
             f"create a new Notion page titled '{topic}' under {destination} "
-            "containing the report, using the Notion create page action"
+            "containing the report, using the Notion create page tool"
         )
+
+
+def build_crew(topic: str, destination: str, action_label: str, history=None):
+    # CrewAI's native LLM class talks to Groq through its LiteLLM fallback
+    # (Groq isn't one of the five natively-integrated providers). No
+    # langchain-groq needed.
+    llm = LLM(model="groq/openai/gpt-oss-120b", api_key=os.environ["GROQ_API_KEY"])
+
+    config = ACTIONS[action_label]
+    composio = Composio(
+        api_key=os.environ["COMPOSIO_API_KEY"],
+        provider=CrewAIProvider(),
+    )
+    # Scope the session to just the one toolkit/tool this run needs, so
+    # the agent can't reach for unrelated connected apps.
+    session = composio.create(
+        user_id="default",
+        toolkits=[config["toolkit"]],
+        preload={"tools": [config["tool"]]},
+    )
+    action_tools = session.tools()
+
+    tools = [TavilySearchTool(), FirecrawlScrapeTool()] + action_tools
+
+    deliver_instruction = _delivery_instruction(action_label, destination, topic)
 
     history_context = ""
     if history:

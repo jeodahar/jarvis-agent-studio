@@ -31,6 +31,17 @@ do that, free or paid.
 
 ---
 
+## 🔒 Security note (read this once)
+
+In March 2026, the `litellm` package (which CrewAI uses to talk to
+Groq) was hit by a real supply-chain attack — two malicious versions
+briefly published to PyPI stole credentials from machines that
+installed them. It was fixed fast, but `requirements.txt` **pins
+`litellm>=1.83.14`** on purpose, to a version confirmed after both that
+incident and a later critical bug were patched. Please don't loosen
+that pin to "just get it working" without knowing why it's there.
+
+
 ## Step 1 — Create free accounts and get API keys
 
 | # | Service | Used for | Link |
@@ -93,10 +104,10 @@ COMPOSIO_API_KEY = "..."
 - **Wake-word never triggers** → use push-to-talk instead (see honesty
   note above); this is a browser limitation, not a bug to "fix"
 - **"Missing API keys"** → check Secrets key names match exactly
-- **Composio action fails** → the exact action name (e.g.
-  `SLACK_SEND_MESSAGE`) can change over time on Composio's side; if you
-  get an "unknown action" error, search Composio's docs/dashboard for
-  the current name and update the `ACTIONS` dict in `agent.py`
+- **Composio action fails** → Composio's tool slugs (e.g.
+  `SLACK_SEND_MESSAGE`) occasionally change; if you get a "tool not
+  found" error, search https://docs.composio.dev's toolkit catalog for
+  the current slug and update the `ACTIONS` dict in `agent.py`
 - **No message/page/email arrives** → confirm you connected that app
   in the Composio dashboard first
 - **Conversation memory resets** → it's per-browser-session; refreshing

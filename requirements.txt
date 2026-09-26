@@ -1,10 +1,23 @@
 streamlit==1.38.0
-crewai==0.63.6
-crewai-tools==0.12.1
-langchain-groq==0.2.0
-firecrawl-py==1.2.4
-tavily-python==0.5.0
-composio-crewai==0.5.13
+
+# CrewAI, with LiteLLM support installed (needed because Groq is reached
+# via CrewAI's LiteLLM fallback, not one of its 5 native providers).
+crewai[litellm]>=1.15.0,<2.0.0
+
+# SECURITY: litellm had malicious versions 1.82.7 and 1.82.8 published to
+# PyPI on 2026-03-24 (credential-stealing malware, CVE-2026-33634), and a
+# separate critical CVE (2026-42208) was only fixed in 1.83.7+. This pin
+# forces a version after both were fixed, regardless of what a looser
+# crewai dependency spec would otherwise allow in.
+litellm>=1.83.14
+
+# Composio's current SDK (the old composio-crewai==0.x / ComposioToolSet
+# API is deprecated)
+composio>=0.13.0
+composio_crewai>=0.1.0
+
+firecrawl-py>=1.10.0
+tavily-python>=0.5.0
 python-dotenv==1.0.1
 streamlit-mic-recorder==0.0.8
 SpeechRecognition==3.10.4
